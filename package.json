@@ -13,6 +13,7 @@
     "oyente": "oyente -s src/Fund.sol",
     "localnode": "node_modules/.bin/testrpc --gasLimit 6900000 --gasPrice=100000000000",
     "localnode:background": "npm run localnode > testrpc.log &",
+    "localnode:dapp": "./scripts/dapp-testnet.sh",
     "compile": "export SOLC_FLAGS='--optimize' && make all",
     "lint": "eslint .",
     "deploy:live": "npm run compile && babel-node deployment/deploy-all.js live",
