@@ -15,6 +15,9 @@ ADDRESS_6='0x00f18cd3ea9a97828861ac9c965d09b94fce746e'
 export ETH_FROM="$ADDRESS_1"
 export ETH_GAS=6900000
 
+# values
+PREMINED_AMOUNT=$(seth --to-uint256 10000000000000000)
+
 # deploy libraries
 REWARDS=$(dapp create libraries/rewards)
 SIMPLE_ADAPTER=$(dapp create exchange/adapter/simpleAdapter)
@@ -27,9 +30,9 @@ LINKS="$SIMPLEADAPTER_PLACEHOLDER:$SIMPLE_ADAPTER $REWARDS_PLACEHOLDER:$REWARDS"
 (set -x; solc --link --libraries "$LINKS" "${OUT_DIR?}"/**/*.bin)
 
 # deploy contracts
-ETH_TOKEN=$(dapp create PreminedAsset "Ether Token" "ETH-T" 18 1000000000)
-EUR_TOKEN=$(dapp create PreminedAsset "Euro Token" "EUR-T" 18 1000000000)
-MLN_TOKEN=$(dapp create PreminedAsset "Melon Token" "MLN-T" 18 1000000000)
+ETH_TOKEN=$(dapp create PreminedAsset "Ether Token" "ETH-T" 18 $PREMINED_AMOUNT)
+EUR_TOKEN=$(dapp create PreminedAsset "Euro Token" "EUR-T" 18 $PREMINED_AMOUNT)
+MLN_TOKEN=$(dapp create PreminedAsset "Melon Token" "MLN-T" 18 $PREMINED_AMOUNT)
 DATAFEED=$(dapp create datafeeds/DataFeed $MLN_TOKEN 0 0)
 SIMPLE_MARKET=$(dapp create exchange/thirdparty/SimpleMarket)
 SPHERE=$(dapp create sphere/Sphere $DATAFEED $SIMPLE_MARKET)
