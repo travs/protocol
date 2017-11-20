@@ -13,6 +13,7 @@ ADDRESS_5='0x00b71117fff2739e83cadba788873adce169563b'
 ADDRESS_6='0x00f18cd3ea9a97828861ac9c965d09b94fce746e'
 
 export ETH_FROM="$ADDRESS_1"
+export ETH_GAS=6900000
 
 # deploy libraries
 REWARDS=$(dapp create libraries/rewards)
@@ -31,11 +32,11 @@ EUR_TOKEN=$(dapp create PreminedAsset "Euro Token" "EUR-T" 18 1000000000)
 MLN_TOKEN=$(dapp create PreminedAsset "Melon Token" "MLN-T" 18 1000000000)
 DATAFEED=$(dapp create datafeeds/DataFeed $MLN_TOKEN 0 0)
 SIMPLE_MARKET=$(dapp create exchange/thirdparty/SimpleMarket)
-SPHERE=$(dapp create sphere/Sphere $DATAFEED $SIMPLEMARKET)
+SPHERE=$(dapp create sphere/Sphere $DATAFEED $SIMPLE_MARKET)
 PARTICIPATION=$(dapp create participation/Participation)
 RISK_MGMT=$(dapp create riskmgmt/RMMakeOrders)
 GOVERNANCE=$(dapp create system/Governance [4b28c7f4beb488989a2e01333eb67511e07dff31] 0 100000) # TODO: can't encode [] yet (paritytech/ethabi/issues/65), so using a mock address
-VERSION=$(dapp create version/Version 1 $ADDRESS_2 $MLN_TOKEN --gas 6000000) # TODO: change the version num and governance address (depends on above)
+VERSION=$(dapp create version/Version "1.0.0" $GOVERNANCE $MLN_TOKEN) # TODO: change the version num and governance address (depends on above)
 
 # TODO: make this more dynamic (e.g. writing only to one environment object
 cat <<EOF > $ADDRESS_BOOK
