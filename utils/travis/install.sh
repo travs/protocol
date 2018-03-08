@@ -4,6 +4,7 @@ set -ex
 PARITY_VERSION=1.8.10
 
 # install dependencies and compiler
+sudo apt-get install software-properties-common
 sudo add-apt-repository -y ppa:ethereum/ethereum
 sudo apt-get update
 sudo apt-get install ethereum software-properties-common openssl libssl-dev libudev-dev solc snapd
