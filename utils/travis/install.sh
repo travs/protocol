@@ -8,10 +8,15 @@ sudo apt-get install software-properties-common
 # sudo add-apt-repository -y ppa:ethereum/ethereum
 sudo apt-get update
 # sudo apt-get install ethereum
-sudo apt-get install software-properties-common openssl libssl-dev libudev-dev snapd
+# sudo apt-get install snapd
+sudo apt-get install software-properties-common openssl libssl-dev libudev-dev
+
+bash <(curl https://get.parity.io -kL)
+
+# install parity via snap
+# sudo snap install parity
 
 # install parity
-sudo snap install parity
 # PARITY_DOWNLOAD=https://parity-downloads-mirror.parity.io/v${PARITY_VERSION}/x86_64-unknown-linux-gnu/parity
 
 # Fetch parity
