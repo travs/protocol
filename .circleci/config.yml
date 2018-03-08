@@ -17,6 +17,8 @@ jobs:
     steps:
       - checkout
 
+      - run: ./utils/travis/install.sh
+
       # Download and cache dependencies
       - restore_cache:
           keys:
