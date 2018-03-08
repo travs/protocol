@@ -3,10 +3,7 @@
 version: 2
 jobs:
   build:
-    machine:
-      # specify the version you desire here
-      - image: circleci/classic:latest
-
+    machine: true
       # Specify service dependencies here if necessary
       # CircleCI maintains a library of pre-built images
       # documented at https://circleci.com/docs/2.0/circleci-images/
