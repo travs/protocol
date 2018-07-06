@@ -92,6 +92,7 @@
       "tests/integration/fundTrading.js",
       "tests/integration/competitionRegistration.js",
       "tests/integration/competitionPayout.js",
+      "tests/integration/performanceFees.js",
       "tests/integration/centralizedExchange.js",
       "tests/integration/simpleMarketWithApprove.js",
       "tests/integration/redeemMaliciousAsset.js",

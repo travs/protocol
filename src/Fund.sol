@@ -31,6 +31,7 @@ contract Fund is DSMath, DBC, Owned, Shares, FundInterface {
         uint performanceFee; // Performance based fee measured against QUOTE_ASSET
         uint unclaimedFees; // Fees not yet allocated to the fund manager
         uint nav; // Net asset value
+        uint sharePrice; // Share price
         uint highWaterMark; // A record of best all-time fund performance
         uint totalSupply; // Total supply of shares
         uint timestamp; // Time when calculations are performed in seconds
@@ -80,12 +81,14 @@ contract Fund is DSMath, DBC, Owned, Shares, FundInterface {
     // Constructor fields
     uint public MANAGEMENT_FEE_RATE; // Fee rate in QUOTE_ASSET per managed seconds in WAD
     uint public PERFORMANCE_FEE_RATE; // Fee rate in QUOTE_ASSET per delta improvement in WAD
+    uint public PERFORMANCE_FREQUENCY; // Frequency of performane fee calculation
     address public VERSION; // Address of Version contract
     Asset public QUOTE_ASSET; // QUOTE asset as ERC20 contract
     // Methods fields
     Modules public modules; // Struct which holds all the initialised module instances
     Exchange[] public exchanges; // Array containing exchanges this fund supports
     Calculations public atLastUnclaimedFeeAllocation; // Calculation results at last allocateUnclaimedFees() call
+    Calculations public atLastHighWaterMarkUpdate; // Calculation results at last highWaterMark update
     Order[] public orders;  // append-only list of makes/takes from this fund
     mapping (address => mapping(address => OpenMakeOrder)) public exchangesToOpenMakeOrders; // exchangeIndex to: asset to open make orders
     bool public isShutDown; // Security feature, if yes than investing, managing, allocateUnclaimedFees gets blocked
@@ -116,6 +119,7 @@ contract Fund is DSMath, DBC, Owned, Shares, FundInterface {
         address ofQuoteAsset,
         uint ofManagementFee,
         uint ofPerformanceFee,
+        uint ofPerformanceFrequency,
         address ofCompliance,
         address ofRiskMgmt,
         address ofPriceFeed,
@@ -130,6 +134,7 @@ contract Fund is DSMath, DBC, Owned, Shares, FundInterface {
         owner = ofManager;
         MANAGEMENT_FEE_RATE = ofManagementFee; // 1 percent is expressed as 0.01 * 10 ** 18
         PERFORMANCE_FEE_RATE = ofPerformanceFee; // 1 percent is expressed as 0.01 * 10 ** 18
+        PERFORMANCE_FREQUENCY = ofPerformanceFrequency;
         VERSION = msg.sender;
         modules.compliance = ComplianceInterface(ofCompliance);
         modules.riskmgmt = RiskMgmtInterface(ofRiskMgmt);
@@ -159,6 +164,18 @@ contract Fund is DSMath, DBC, Owned, Shares, FundInterface {
             performanceFee: 0,
             unclaimedFees: 0,
             nav: 0,
+            sharePrice: toSmallestShareUnit(1),
+            highWaterMark: 10 ** getDecimals(),
+            totalSupply: _totalSupply,
+            timestamp: now
+        });
+        atLastHighWaterMarkUpdate = Calculations({
+            gav: 0,
+            managementFee: 0,
+            performanceFee: 0,
+            unclaimedFees: 0,
+            nav: 0,
+            sharePrice: toSmallestShareUnit(1),
             highWaterMark: 10 ** getDecimals(),
             totalSupply: _totalSupply,
             timestamp: now
@@ -291,7 +308,11 @@ contract Fund is DSMath, DBC, Owned, Shares, FundInterface {
         external
         returns (bool success)
     {
-        return emergencyRedeem(shareQuantity, ownedAssets);
+        var ( , , , , feesShareQuantity, , ) = performCalculations();
+        uint feesSharesToDeduct = mul(feesShareQuantity, shareQuantity) / _totalSupply;
+        annihilateShares(msg.sender, feesSharesToDeduct);
+        createShares(owner, feesSharesToDeduct);
+        return emergencyRedeem(sub(shareQuantity, feesSharesToDeduct), ownedAssets);
     }
 
     // EXTERNAL : MANAGING
@@ -539,6 +560,16 @@ contract Fund is DSMath, DBC, Owned, Shares, FundInterface {
     /// @return sharePrice Share price denominated in [base unit of melonAsset]
     function calcSharePriceAndAllocateFees() public returns (uint)
     {
+        uint gav = calcGav(); // Reflects value independent of fees
+        uint sharePrice = _totalSupply > 0 ? calcValuePerShare(gav, _totalSupply) : toSmallestShareUnit(1);
+        return sharePrice;
+    }
+
+    /// @notice Calculates highwatermark and converts performance fee
+    function calculateHighWaterMark()
+        public
+        pre_cond(sub(now, atLastHighWaterMarkUpdate.timestamp) >= PERFORMANCE_FREQUENCY)
+    {
         var (
             gav,
             managementFee,
@@ -549,25 +580,32 @@ contract Fund is DSMath, DBC, Owned, Shares, FundInterface {
             sharePrice
         ) = performCalculations();
 
+        uint highWaterMark = atLastHighWaterMarkUpdate.highWaterMark >= sharePrice ? atLastHighWaterMarkUpdate.highWaterMark : sharePrice;
         createShares(owner, feesShareQuantity); // Updates _totalSupply by creating shares allocated to manager
 
         // Update Calculations
-        uint highWaterMark = atLastUnclaimedFeeAllocation.highWaterMark >= sharePrice ? atLastUnclaimedFeeAllocation.highWaterMark : sharePrice;
+        atLastHighWaterMarkUpdate = Calculations({
+            gav: gav,
+            managementFee: managementFee,
+            performanceFee: performanceFee,
+            unclaimedFees: unclaimedFees,
+            nav: nav,
+            sharePrice: sharePrice,
+            highWaterMark: highWaterMark,
+            totalSupply: _totalSupply,
+            timestamp: now
+        });
         atLastUnclaimedFeeAllocation = Calculations({
             gav: gav,
             managementFee: managementFee,
             performanceFee: performanceFee,
             unclaimedFees: unclaimedFees,
             nav: nav,
+            sharePrice: sharePrice,
             highWaterMark: highWaterMark,
             totalSupply: _totalSupply,
             timestamp: now
         });
-
-        emit FeesConverted(now, feesShareQuantity, unclaimedFees);
-        emit CalculationUpdate(now, managementFee, performanceFee, nav, sharePrice, _totalSupply);
-
-        return sharePrice;
     }
 
     // PUBLIC : REDEEMING
