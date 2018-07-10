@@ -14,6 +14,7 @@ const environmentConfig = require("../../utils/config/environment.js");
 const environment = "development";
 const config = environmentConfig[environment];
 const performanceFeeRate = new BigNumber(10 ** 17);
+const managementFeeRate = new BigNumber(0);
 
 BigNumber.config({ ERRORS: false });
 
@@ -75,8 +76,7 @@ test.serial("can set up new fund", async t => {
   const receipt = await version.methods.setupFund(
     web3.utils.toHex(fundName), // name
     ethToken.options.address, // base asset
-    0,
-    // config.protocol.fund.managementFee,
+    managementFeeRate,
     performanceFeeRate,
     1,
     deployed.NoCompliance.options.address,
@@ -198,8 +198,5 @@ test.serial("manager converts his shares", async t => {
     { from: manager, gas: config.gas, gasPrice: config.gasPrice },
   );
   const managerEthToken = new BigNumber(await ethToken.methods.balanceOf(manager).call());
-  // console.log(managerShares);
-  // console.log(sharePriceExclFees);
-  console.log(managerEthToken.sub(accumulatedPFeeAtPeak));
-  // t.deepEqual(preSharePrice, postSharePrice);
+  t.deepEqual(Number(managerEthToken.sub(accumulatedPFeeAtPeak)), 0);
 });

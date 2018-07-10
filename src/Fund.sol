@@ -264,6 +264,9 @@ contract Fund is DSMath, DBC, Owned, Shares, FundInterface {
             modules.pricefeed.getPriceInfo(address(request.requestAsset));
         require(isRecent);
 
+        // Convert Management fees
+        claimPerformanceFee();
+
         // sharePrice quoted in QUOTE_ASSET and multiplied by 10 ** fundDecimals
         uint costQuantity = toWholeShareUnit(mul(request.shareQuantity, calcSharePriceExcludingFees())); // By definition quoteDecimals == fundDecimals
         if (request.requestAsset != address(QUOTE_ASSET)) {
@@ -308,8 +311,9 @@ contract Fund is DSMath, DBC, Owned, Shares, FundInterface {
         external
         returns (bool success)
     {
-        var ( , , , , feesShareQuantity, , ) = performCalculations();
-        uint feesSharesToDeduct = mul(feesShareQuantity, shareQuantity) / _totalSupply;
+        var (gav, , , unclaimedFees, , , ) = performCalculations();
+        uint feesShareBeforeAccountingInflation = (gav == 0) ? 0 : mul(_totalSupply, unclaimedFees) / gav;
+        uint feesSharesToDeduct = mul(feesShareBeforeAccountingInflation, shareQuantity) / _totalSupply;
         annihilateShares(msg.sender, feesSharesToDeduct);
         createShares(owner, feesSharesToDeduct);
         return emergencyRedeem(sub(shareQuantity, feesSharesToDeduct), ownedAssets);
@@ -550,7 +554,8 @@ contract Fund is DSMath, DBC, Owned, Shares, FundInterface {
         nav = calcNav(gav, unclaimedFees);
 
         // The value of unclaimedFees measured in shares of this fund at current value
-        feesShareQuantity = (gav == 0) ? 0 : mul(_totalSupply, unclaimedFees) / gav;
+        uint feesShareQuantityWithoutInflation = (gav == 0) ? 0 : mul(_totalSupply, unclaimedFees) / gav;
+        feesShareQuantity = (gav == 0) ? 0 : mul(feesShareQuantityWithoutInflation, _totalSupply) / sub(_totalSupply, feesShareQuantityWithoutInflation);
         // The total share supply including the value of unclaimedFees, measured in shares of this fund
         uint totalSupplyAccountingForFees = add(_totalSupply, feesShareQuantity);
         sharePrice = _totalSupply > 0 ? calcValuePerShare(gav, totalSupplyAccountingForFees) : toSmallestShareUnit(1); // Handle potential division through zero by defining a default value
@@ -579,8 +584,9 @@ contract Fund is DSMath, DBC, Owned, Shares, FundInterface {
             sharePrice
         ) = performCalculations();
 
-        uint mgmtFeeShareQuantity = (gav == 0) ? 0 : mul(_totalSupply, managementFee) / gav;
-        createShares(owner, mgmtFeeShareQuantity);
+        uint mgmtFeeShares = (gav == 0) ? 0 : mul(_totalSupply, managementFee) / gav;
+        uint mgmtFeeSharesToInflate = (gav == 0) ? 0 : mul(mgmtFeeShares, _totalSupply) / sub(_totalSupply, mgmtFeeShares);
+        createShares(owner, mgmtFeeSharesToInflate);
 
         // Update Calculations
         atLastManagementFeeAllocation = Calculations({
@@ -623,6 +629,17 @@ contract Fund is DSMath, DBC, Owned, Shares, FundInterface {
             nav: nav,
             sharePrice: sharePrice,
             highWaterMark: highWaterMark,
+            totalSupply: _totalSupply,
+            timestamp: now
+        });
+        atLastManagementFeeAllocation = Calculations({
+            gav: gav,
+            managementFee: managementFee,
+            performanceFee: performanceFee,
+            unclaimedFees: unclaimedFees,
+            nav: nav,
+            sharePrice: sharePrice,
+            highWaterMark: atLastHighWaterMarkUpdate.highWaterMark,
             totalSupply: _totalSupply,
             timestamp: now
         });
