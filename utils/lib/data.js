@@ -1,40 +1,22 @@
-import api from "./api";
+import web3 from "./web3";
 
-const makeOrderSignature = api.util
-  .abiSignature("makeOrder", [
-    "address",
-    "address[5]",
-    "uint256[8]",
-    "bytes32",
-    "uint8",
-    "bytes32",
-    "bytes32",
-  ])
-  .slice(0, 10);
+function abiEncode(name, argTypes=[]) {
+  return web3.eth.abi.encodeFunctionSignature(
+    `${name}(${argTypes.join(",")})`
+  );
+}
 
-const takeOrderSignature = api.util
-  .abiSignature("takeOrder", [
-    "address",
-    "address[5]",
-    "uint256[8]",
-    "bytes32",
-    "uint8",
-    "bytes32",
-    "bytes32",
-  ])
-  .slice(0, 10);
+const makeOrderSignature = abiEncode("makeOrder", [
+  "address", "address[5]", "uint256[8]", "bytes32", "uint8", "bytes32", "bytes32",
+]);
 
-const cancelOrderSignature = api.util
-  .abiSignature("cancelOrder", [
-    "address",
-    "address[5]",
-    "uint256[8]",
-    "bytes32",
-    "uint8",
-    "bytes32",
-    "bytes32",
-  ])
-  .slice(0, 10);
+const takeOrderSignature = abiEncode("takeOrder", [
+  "address", "address[5]", "uint256[8]", "bytes32", "uint8", "bytes32", "bytes32",
+]);
+
+const cancelOrderSignature = abiEncode("cancelOrder", [
+  "address", "address[5]", "uint256[8]", "bytes32", "uint8", "bytes32", "bytes32",
+]);
 
 export {
   makeOrderSignature,
