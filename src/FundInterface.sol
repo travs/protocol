@@ -27,8 +27,8 @@ interface FundInterface {
 
     // PUBLIC METHODS
     function emergencyRedeem(uint shareQuantity, address[] requestedAssets) public returns (bool success);
-    function calcSharePriceExcludingFees() public returns (uint);
     function calculateHighWaterMark() public;
+    function claimManagementFee() public;
 
     // PUBLIC VIEW METHODS
     // Get general information
@@ -39,4 +39,5 @@ interface FundInterface {
     // Get accounting information
     function performCalculations() view returns (uint, uint, uint, uint, uint, uint, uint);
     function calcSharePrice() view returns (uint);
+    function calcSharePriceExcludingFees() view returns (uint);
 }

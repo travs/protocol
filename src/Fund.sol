@@ -158,17 +158,6 @@ contract Fund is DSMath, DBC, Owned, Shares, FundInterface {
             require(modules.pricefeed.assetIsRegistered(ofDefaultAssets[j]));
             isInvestAllowed[ofDefaultAssets[j]] = true;
         }
-        atLastManagementFeeAllocation = Calculations({
-            gav: 0,
-            managementFee: 0,
-            performanceFee: 0,
-            unclaimedFees: 0,
-            nav: 0,
-            sharePrice: toSmallestShareUnit(1),
-            highWaterMark: 10 ** getDecimals(),
-            totalSupply: _totalSupply,
-            timestamp: now
-        });
         atLastHighWaterMarkUpdate = Calculations({
             gav: 0,
             managementFee: 0,
@@ -180,6 +169,7 @@ contract Fund is DSMath, DBC, Owned, Shares, FundInterface {
             totalSupply: _totalSupply,
             timestamp: now
         });
+        atLastManagementFeeAllocation = atLastHighWaterMarkUpdate;
     }
 
     // EXTERNAL METHODS
@@ -265,7 +255,7 @@ contract Fund is DSMath, DBC, Owned, Shares, FundInterface {
         require(isRecent);
 
         // Convert Management fees
-        claimPerformanceFee();
+        claimManagementFee();
 
         // sharePrice quoted in QUOTE_ASSET and multiplied by 10 ** fundDecimals
         uint costQuantity = toWholeShareUnit(mul(request.shareQuantity, calcSharePriceExcludingFees())); // By definition quoteDecimals == fundDecimals
@@ -312,11 +302,12 @@ contract Fund is DSMath, DBC, Owned, Shares, FundInterface {
         returns (bool success)
     {
         var (gav, , , unclaimedFees, , , ) = performCalculations();
+        // feesSharesToDeduct doesn't need to account for inflation as fees shares are directly deducted instead of being inflated
         uint feesShareBeforeAccountingInflation = (gav == 0) ? 0 : mul(_totalSupply, unclaimedFees) / gav;
         uint feesSharesToDeduct = mul(feesShareBeforeAccountingInflation, shareQuantity) / _totalSupply;
         annihilateShares(msg.sender, feesSharesToDeduct);
         createShares(owner, feesSharesToDeduct);
-        return emergencyRedeem(sub(shareQuantity, feesSharesToDeduct), ownedAssets);
+        return redeemAssets(sub(shareQuantity, feesSharesToDeduct), ownedAssets);
     }
 
     // EXTERNAL : MANAGING
@@ -553,25 +544,19 @@ contract Fund is DSMath, DBC, Owned, Shares, FundInterface {
         (managementFee, performanceFee, unclaimedFees) = calcUnclaimedFees(gav);
         nav = calcNav(gav, unclaimedFees);
 
+
         // The value of unclaimedFees measured in shares of this fund at current value
-        uint feesShareQuantityWithoutInflation = (gav == 0) ? 0 : mul(_totalSupply, unclaimedFees) / gav;
-        feesShareQuantity = (gav == 0) ? 0 : mul(feesShareQuantityWithoutInflation, _totalSupply) / sub(_totalSupply, feesShareQuantityWithoutInflation);
+        // feesSharesBeforeInflation doesn't take into dilution of value of shares as a result of fees shares creation
+        // feesShareQuantity is derived to make sure that the value of these shares after dilution would be equivalent to unclaimedFees
+        uint feesSharesBeforeInflation = (gav == 0) ? 0 : mul(_totalSupply, unclaimedFees) / gav;
+        feesShareQuantity = (gav == 0) ? 0 : mul(feesSharesBeforeInflation, _totalSupply) / sub(_totalSupply, feesSharesBeforeInflation);
         // The total share supply including the value of unclaimedFees, measured in shares of this fund
         uint totalSupplyAccountingForFees = add(_totalSupply, feesShareQuantity);
         sharePrice = _totalSupply > 0 ? calcValuePerShare(gav, totalSupplyAccountingForFees) : toSmallestShareUnit(1); // Handle potential division through zero by defining a default value
     }
 
-    /// @notice Converts unclaimed fees of the manager into fund shares
-    /// @return sharePrice Share price denominated in [base unit of melonAsset]
-    function calcSharePriceExcludingFees() public returns (uint)
-    {
-        uint gav = calcGav(); // Reflects value independent of fees
-        uint sharePrice = _totalSupply > 0 ? calcValuePerShare(gav, _totalSupply) : toSmallestShareUnit(1);
-        return sharePrice;
-    }
-
-    /// @notice Calculates highwatermark and converts performance fee
-    function claimPerformanceFee()
+    /// @notice Converts and allocates accumulated management fee
+    function claimManagementFee()
         public
     {
         var (
@@ -584,9 +569,12 @@ contract Fund is DSMath, DBC, Owned, Shares, FundInterface {
             sharePrice
         ) = performCalculations();
 
-        uint mgmtFeeShares = (gav == 0) ? 0 : mul(_totalSupply, managementFee) / gav;
-        uint mgmtFeeSharesToInflate = (gav == 0) ? 0 : mul(mgmtFeeShares, _totalSupply) / sub(_totalSupply, mgmtFeeShares);
-        createShares(owner, mgmtFeeSharesToInflate);
+        // The value of managementFee measured in shares of this fund at current value
+        // mgmtFeeSharesBeforeInflation doesn't take into dilution of value of shares as a result of mgmtFeeSharesBeforeInflation shares creation
+        // mgmtFeeShareQuantity is derived to make sure that the value of these shares after dilution would be equivalent to managementFee
+        uint mgmtFeeSharesBeforeInflation = (gav == 0) ? 0 : mul(_totalSupply, managementFee) / gav;
+        uint mgmtFeeShareQuantity = (gav == 0) ? 0 : mul(mgmtFeeSharesBeforeInflation, _totalSupply) / sub(_totalSupply, mgmtFeeSharesBeforeInflation);
+        createShares(owner, mgmtFeeShareQuantity);
 
         // Update Calculations
         atLastManagementFeeAllocation = Calculations({
@@ -632,22 +620,12 @@ contract Fund is DSMath, DBC, Owned, Shares, FundInterface {
             totalSupply: _totalSupply,
             timestamp: now
         });
-        atLastManagementFeeAllocation = Calculations({
-            gav: gav,
-            managementFee: managementFee,
-            performanceFee: performanceFee,
-            unclaimedFees: unclaimedFees,
-            nav: nav,
-            sharePrice: sharePrice,
-            highWaterMark: atLastHighWaterMarkUpdate.highWaterMark,
-            totalSupply: _totalSupply,
-            timestamp: now
-        });
+        atLastManagementFeeAllocation = atLastHighWaterMarkUpdate;
     }
 
     // PUBLIC : REDEEMING
 
-    /// @notice Redeems by allocating an ownership percentage only of requestedAssets to the participant
+    /// @notice Emergency redeem in case of fund shutdown
     /// @dev This works, but with loops, so only up to a certain number of assets (right now the max is 4)
     /// @dev Independent of running price feed! Note: if requestedAssets != ownedAssets then participant misses out on some owned value
     /// @param shareQuantity Number of shares owned by the participant, which the participant would like to redeem for a slice of assets
@@ -655,6 +633,99 @@ contract Fund is DSMath, DBC, Owned, Shares, FundInterface {
     /// @return Whether all assets sent to shareholder or not
     function emergencyRedeem(uint shareQuantity, address[] requestedAssets)
         public
+        pre_cond(isShutDown)
+        returns (bool)
+    {
+        return redeemAssets(shareQuantity, requestedAssets);
+    }
+
+    // PUBLIC : FEES
+
+    /// @dev Quantity of asset held in exchange according to associated order id
+    /// @param ofAsset Address of asset
+    /// @return Quantity of input asset held in exchange
+    function quantityHeldInCustodyOfExchange(address ofAsset) returns (uint) {
+        uint totalSellQuantity;     // quantity in custody across exchanges
+        uint totalSellQuantityInApprove; // quantity of asset in approve (allowance) but not custody of exchange
+        for (uint i; i < exchanges.length; i++) {
+            if (exchangesToOpenMakeOrders[exchanges[i].exchange][ofAsset].id == 0) {
+                continue;
+            }
+            var (sellAsset, , sellQuantity, ) = GenericExchangeInterface(exchanges[i].exchangeAdapter).getOrder(exchanges[i].exchange, exchangesToOpenMakeOrders[exchanges[i].exchange][ofAsset].id);
+            if (sellQuantity == 0) {    // remove id if remaining sell quantity zero (closed)
+                delete exchangesToOpenMakeOrders[exchanges[i].exchange][ofAsset];
+            }
+            totalSellQuantity = add(totalSellQuantity, sellQuantity);
+            if (!exchanges[i].takesCustody) {
+                totalSellQuantityInApprove += sellQuantity;
+            }
+        }
+        if (totalSellQuantity == 0) {
+            isInOpenMakeOrder[sellAsset] = false;
+        }
+        return sub(totalSellQuantity, totalSellQuantityInApprove); // Since quantity in approve is not actually in custody
+    }
+
+    // PUBLIC VIEW METHODS
+
+    /// @notice Calculates sharePrice denominated in [base unit of melonAsset]
+    /// @return sharePrice Share price denominated in [base unit of melonAsset]
+    function calcSharePrice() view returns (uint sharePrice) {
+        (, , , , , sharePrice) = performCalculations();
+        return sharePrice;
+    }
+
+    /// @notice SharePrice without accounting for accumulated fees shares
+    /// @return sharePrice Share price denominated in [base unit of melonAsset]
+    function calcSharePriceExcludingFees() view returns (uint)
+    {
+        uint gav = calcGav(); // Reflects value independent of fees
+        uint sharePrice = _totalSupply > 0 ? calcValuePerShare(gav, _totalSupply) : toSmallestShareUnit(1);
+        return sharePrice;
+    }
+
+    function getModules() view returns (address, address, address) {
+        return (
+            address(modules.pricefeed),
+            address(modules.compliance),
+            address(modules.riskmgmt)
+        );
+    }
+
+    function getLastRequestId() view returns (uint) { return requests.length - 1; }
+    function getLastOrderIndex() view returns (uint) { return orders.length - 1; }
+    function getManager() view returns (address) { return owner; }
+    function getOwnedAssetsLength() view returns (uint) { return ownedAssets.length; }
+    function getExchangeInfo() view returns (address[], address[], bool[]) {
+        address[] memory ofExchanges = new address[](exchanges.length);
+        address[] memory ofAdapters = new address[](exchanges.length);
+        bool[] memory takesCustody = new bool[](exchanges.length);
+        for (uint i = 0; i < exchanges.length; i++) {
+            ofExchanges[i] = exchanges[i].exchange;
+            ofAdapters[i] = exchanges[i].exchangeAdapter;
+            takesCustody[i] = exchanges[i].takesCustody;
+        }
+        return (ofExchanges, ofAdapters, takesCustody);
+    }
+    function orderExpired(address ofExchange, address ofAsset) view returns (bool) {
+        uint expiryTime = exchangesToOpenMakeOrders[ofExchange][ofAsset].expiresAt;
+        require(expiryTime > 0);
+        return block.timestamp >= expiryTime;
+    }
+    function getOpenOrderInfo(address ofExchange, address ofAsset) view returns (uint, uint) {
+        OpenMakeOrder order = exchangesToOpenMakeOrders[ofExchange][ofAsset];
+        return (order.id, order.expiresAt);
+    }
+
+    // INTERNAL METHODS
+    /// @notice Redeems by allocating an ownership percentage only of requestedAssets to the participant
+    /// @dev This works, but with loops, so only up to a certain number of assets (right now the max is 4)
+    /// @dev Independent of running price feed! Note: if requestedAssets != ownedAssets then participant misses out on some owned value
+    /// @param shareQuantity Number of shares owned by the participant, which the participant would like to redeem for a slice of assets
+    /// @param requestedAssets List of addresses that consitute a subset of ownedAssets.
+    /// @return Whether all assets sent to shareholder or not
+    function redeemAssets(uint shareQuantity, address[] requestedAssets)
+        internal
         pre_cond(balances[msg.sender] >= shareQuantity)  // sender owns enough shares
         returns (bool)
     {
@@ -705,74 +776,5 @@ contract Fund is DSMath, DBC, Owned, Shares, FundInterface {
         }
         emit Redeemed(msg.sender, now, shareQuantity);
         return true;
-    }
-
-    // PUBLIC : FEES
-
-    /// @dev Quantity of asset held in exchange according to associated order id
-    /// @param ofAsset Address of asset
-    /// @return Quantity of input asset held in exchange
-    function quantityHeldInCustodyOfExchange(address ofAsset) returns (uint) {
-        uint totalSellQuantity;     // quantity in custody across exchanges
-        uint totalSellQuantityInApprove; // quantity of asset in approve (allowance) but not custody of exchange
-        for (uint i; i < exchanges.length; i++) {
-            if (exchangesToOpenMakeOrders[exchanges[i].exchange][ofAsset].id == 0) {
-                continue;
-            }
-            var (sellAsset, , sellQuantity, ) = GenericExchangeInterface(exchanges[i].exchangeAdapter).getOrder(exchanges[i].exchange, exchangesToOpenMakeOrders[exchanges[i].exchange][ofAsset].id);
-            if (sellQuantity == 0) {    // remove id if remaining sell quantity zero (closed)
-                delete exchangesToOpenMakeOrders[exchanges[i].exchange][ofAsset];
-            }
-            totalSellQuantity = add(totalSellQuantity, sellQuantity);
-            if (!exchanges[i].takesCustody) {
-                totalSellQuantityInApprove += sellQuantity;
-            }
-        }
-        if (totalSellQuantity == 0) {
-            isInOpenMakeOrder[sellAsset] = false;
-        }
-        return sub(totalSellQuantity, totalSellQuantityInApprove); // Since quantity in approve is not actually in custody
-    }
-
-    // PUBLIC VIEW METHODS
-
-    /// @notice Calculates sharePrice denominated in [base unit of melonAsset]
-    /// @return sharePrice Share price denominated in [base unit of melonAsset]
-    function calcSharePrice() view returns (uint sharePrice) {
-        (, , , , , sharePrice) = performCalculations();
-        return sharePrice;
-    }
-
-    function getModules() view returns (address, address, address) {
-        return (
-            address(modules.pricefeed),
-            address(modules.compliance),
-            address(modules.riskmgmt)
-        );
-    }
-
-    function getLastRequestId() view returns (uint) { return requests.length - 1; }
-    function getLastOrderIndex() view returns (uint) { return orders.length - 1; }
-    function getManager() view returns (address) { return owner; }
-    function getOwnedAssetsLength() view returns (uint) { return ownedAssets.length; }
-    function getExchangeInfo() view returns (address[], address[], bool[]) {
-        address[] memory ofExchanges = new address[](exchanges.length);
-        address[] memory ofAdapters = new address[](exchanges.length);
-        bool[] memory takesCustody = new bool[](exchanges.length);
-        for (uint i = 0; i < exchanges.length; i++) {
-            ofExchanges[i] = exchanges[i].exchange;
-            ofAdapters[i] = exchanges[i].exchangeAdapter;
-            takesCustody[i] = exchanges[i].takesCustody;
-        }
-        return (ofExchanges, ofAdapters, takesCustody);
-    }
-    function orderExpired(address ofExchange, address ofAsset) view returns (bool) {
-        uint expiryTime = exchangesToOpenMakeOrders[ofExchange][ofAsset].expiresAt;
-        require(expiryTime > 0);
-        return block.timestamp >= expiryTime;
-    }
-    function getOpenOrderInfo(address ofExchange, address ofAsset) view returns (uint, uint) {
-        OpenMakeOrder order = exchangesToOpenMakeOrders[ofExchange][ofAsset];
-        return (order.id, order.expiresAt);
     }
 }
