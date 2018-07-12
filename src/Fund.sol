@@ -301,6 +301,12 @@ contract Fund is DSMath, DBC, Owned, Shares, FundInterface {
         external
         returns (bool success)
     {
+        // If the sender is the fund manager
+        if (msg.sender == owner) {
+            return redeemAssets(shareQuantity, ownedAssets);
+        }
+
+        // Transfer fees shares directly the manager
         var (gav, , , unclaimedFees, , , ) = performCalculations();
         // feesSharesToDeduct doesn't need to account for inflation as fees shares are directly deducted instead of being inflated
         uint feesShareBeforeAccountingInflation = (gav == 0) ? 0 : mul(_totalSupply, unclaimedFees) / gav;
