@@ -301,6 +301,8 @@ contract Fund is DSMath, DBC, Owned, Shares, FundInterface {
         external
         returns (bool success)
     {
+        claimManagementFee();
+        
         // If the sender is the fund manager
         if (msg.sender == owner) {
             return redeemAssets(shareQuantity, ownedAssets);
@@ -591,7 +593,7 @@ contract Fund is DSMath, DBC, Owned, Shares, FundInterface {
             nav: nav,
             sharePrice: sharePrice,
             highWaterMark: atLastHighWaterMarkUpdate.highWaterMark,
-            totalSupply: _totalSupply,
+            totalSupply: sub(_totalSupply, mgmtFeeShareQuantity), // For consistency
             timestamp: now
         });
     }
@@ -623,7 +625,7 @@ contract Fund is DSMath, DBC, Owned, Shares, FundInterface {
             nav: nav,
             sharePrice: sharePrice,
             highWaterMark: highWaterMark,
-            totalSupply: _totalSupply,
+            totalSupply: sub(_totalSupply, feesShareQuantity), // for consistency
             timestamp: now
         });
         atLastManagementFeeAllocation = atLastHighWaterMarkUpdate;
