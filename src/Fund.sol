@@ -302,7 +302,7 @@ contract Fund is DSMath, DBC, Owned, Shares, FundInterface {
         returns (bool success)
     {
         claimManagementFee();
-        
+
         // If the sender is the fund manager
         if (msg.sender == owner) {
             return redeemAssets(shareQuantity, ownedAssets);
@@ -551,7 +551,6 @@ contract Fund is DSMath, DBC, Owned, Shares, FundInterface {
         gav = calcGav(); // Reflects value independent of fees
         (managementFee, performanceFee, unclaimedFees) = calcUnclaimedFees(gav);
         nav = calcNav(gav, unclaimedFees);
-
 
         // The value of unclaimedFees measured in shares of this fund at current value
         // feesSharesBeforeInflation doesn't take into dilution of value of shares as a result of fees shares creation
