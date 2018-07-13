@@ -174,7 +174,7 @@ test.serial("manager converts his shares", async t => {
   // const feeSharesInflate = feeShares.mul(totalSupplyAtConversion).div(new BigNumber(totalSupplyAtConversion).sub(feeShares));
   // totalAccumulatedShares += Number(feeSharesInflate);
   // totalAccumulatedMgmtFee += Number(accumulatedMgmtFee);
-  // t.deepEqual(Number(managerShares), Math.floor(totalAccumulatedShares))
+  t.deepEqual(Number(managerShares), Math.floor(totalAccumulatedShares))
   t.deepEqual(Number(mgmtFeeAtConversion), Number(accumulatedMgmtFee));
   t.deepEqual(Number(managerEthToken), Math.floor(totalAccumulatedMgmtFee));
 });

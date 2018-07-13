@@ -301,12 +301,12 @@ contract Fund is DSMath, DBC, Owned, Shares, FundInterface {
         external
         returns (bool success)
     {
-        claimManagementFee();
-
         // If the sender is the fund manager
         if (msg.sender == owner) {
             return redeemAssets(shareQuantity, ownedAssets);
         }
+
+        claimManagementFee();
 
         // Transfer fees shares directly the manager
         var (gav, , , unclaimedFees, , , ) = performCalculations();
