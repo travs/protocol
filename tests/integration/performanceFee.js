@@ -132,6 +132,18 @@ test.serial("allows request and execution on the first investment", async t => {
   t.deepEqual(post.fund.ether, pre.fund.ether);
 });
 
+test.serial("artificially inflate share price", async t => {
+  const preSharePrice = await fund.methods.calcSharePrice().call();
+  await ethToken.methods.transfer(fund.options.address, firstTest.wantedShares.mul(1.5)).send(
+    { from: deployer, gas: config.gas, gasPrice: config.gasPrice }
+  );
+  const postSharePrice = await fund.methods.calcSharePrice().call();
+  const gav = await fund.methods.calcGav().call();
+  const [, managementFee] = Object.values(await fund.methods.calcUnclaimedFees(gav).call());
+  t.true(Number(postSharePrice) > Number(preSharePrice));
+  t.true(managementFee > 0);
+});
+
 test.serial("new investment should not affect share price", async t => {
   const preSharePrice = new BigNumber(await fund.methods.calcSharePrice().call());
   const sharePriceExclFees = new BigNumber(await fund.methods.calcSharePriceExcludingFees().call());
