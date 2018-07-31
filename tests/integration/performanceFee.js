@@ -44,7 +44,7 @@ async function requestAndExecute(from, offeredValue, wantedShares) {
   await updateCanonicalPriceFeed(deployed);
   await updateCanonicalPriceFeed(deployed);
   const requestId = await fund.methods.getLastRequestId().call();
-  // console.log(await fund.methods.calcSharePriceAndAllocateFees().call());
+  // console.log(await fund.methods.calcRedemptionSharePriceAndAllocateFees().call());
   await fund.methods.executeRequest(requestId).send(
     { from, gas: config.gas, gasPrice: config.gasPrice },
   );
@@ -133,11 +133,11 @@ test.serial("allows request and execution on the first investment", async t => {
 });
 
 test.serial("artificially inflate share price", async t => {
-  const preSharePrice = new BigNumber(await fund.methods.calcSharePrice().call());
+  const preSharePrice = new BigNumber(await fund.methods.calcRedemptionSharePrice().call());
   await ethToken.methods.transfer(fund.options.address, firstTest.wantedShares.mul(1.78)).send(
     { from: deployer, gas: config.gas, gasPrice: config.gasPrice }
   );
-  const postSharePrice = new BigNumber(await fund.methods.calcSharePrice().call());
+  const postSharePrice = new BigNumber(await fund.methods.calcRedemptionSharePrice().call());
   const gav = new BigNumber(await fund.methods.calcGav().call());
   const totalSupply = new BigNumber(await fund.methods.totalSupply().call());
   const [, performanceFee, unclaimedFees] = Object.values(await fund.methods.calcUnclaimedFees(gav).call()).map(e => new BigNumber(e));;
@@ -155,27 +155,27 @@ test.serial("artificially inflate share price", async t => {
 });
 
 test.serial("new investment should not affect share price", async t => {
-  const preSharePrice = new BigNumber(await fund.methods.calcSharePrice().call());
-  const sharePriceExclFees = new BigNumber(await fund.methods.calcSharePriceExcludingFees().call());
+  const preSharePrice = new BigNumber(await fund.methods.calcRedemptionSharePrice().call());
+  const sharePriceExclFees = new BigNumber(await fund.methods.calcInvestmentSharePrice().call());
   await requestAndExecute(investor, firstTest.wantedShares.mul(sharePriceExclFees).div(10 ** 18), firstTest.wantedShares);
-  const postSharePrice = new BigNumber(await fund.methods.calcSharePrice().call());
+  const postSharePrice = new BigNumber(await fund.methods.calcRedemptionSharePrice().call());
   accumulatedPFeeAtPeak = new BigNumber((await fund.methods.performCalculations().call()).performanceFee);
   t.deepEqual(preSharePrice, postSharePrice);
 });
 
 test.serial("redemption should not affect share price", async t => {
-  const preSharePrice = new BigNumber(await fund.methods.calcSharePrice().call());
+  const preSharePrice = new BigNumber(await fund.methods.calcRedemptionSharePrice().call());
   await fund.methods.redeemAllOwnedAssets(firstTest.wantedShares).send(
     { from: investor, gas: config.gas, gasPrice: config.gasPrice },
   );
   // const managerShares = new BigNumber(await fund.methods.balanceOf(manager).call());
-  const postSharePrice = new BigNumber(await fund.methods.calcSharePrice().call());
+  const postSharePrice = new BigNumber(await fund.methods.calcRedemptionSharePrice().call());
   t.deepEqual(preSharePrice, postSharePrice);
 });
 
 test.serial("performance fee calculation is accurate", async t => {
   // Keep track of fees shares before HWM Update
-  const sharePriceExclFees = new BigNumber(await fund.methods.calcSharePriceExcludingFees().call());
+  const sharePriceExclFees = new BigNumber(await fund.methods.calcInvestmentSharePrice().call());
   const initialSharePrice = new BigNumber(10 ** 18);
   const gainInSharePrice = sharePriceExclFees.sub(initialSharePrice);
   const totalSupply = new BigNumber(await fund.methods.totalSupply().call());
@@ -186,13 +186,13 @@ test.serial("performance fee calculation is accurate", async t => {
 });
 
 test.serial("highwatermark update doesn't affect share price", async t => {
-  const preSharePrice = new BigNumber(await fund.methods.calcSharePrice().call());
+  const preSharePrice = new BigNumber(await fund.methods.calcRedemptionSharePrice().call());
   const accumulatedFeesShares = new BigNumber((await fund.methods.performCalculations().call()).feesShareQuantity);
   const preManagerShares = new BigNumber(await fund.methods.balanceOf(manager).call());
   await fund.methods.calculateHighWaterMark().send(
     { from: manager, gas: config.gas, gasPrice: config.gasPrice },
   );
-  const postSharePrice = new BigNumber(await fund.methods.calcSharePrice().call());
+  const postSharePrice = new BigNumber(await fund.methods.calcRedemptionSharePrice().call());
   const postManagerShares = new BigNumber(await fund.methods.balanceOf(manager).call());
   t.deepEqual(preSharePrice, postSharePrice);
   t.deepEqual(postManagerShares.sub(preManagerShares), accumulatedFeesShares);

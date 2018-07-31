@@ -743,7 +743,7 @@ test.serial(`Allows investment in native asset`, async t => {
   const investorPreShares = Number(
     await fund.methods.balanceOf(investor).call(),
   );
-  const sharePrice = await fund.methods.calcSharePrice().call();
+  const sharePrice = await fund.methods.calcRedemptionSharePrice().call();
   const [
     ,
     invertedNativeAssetPrice,
