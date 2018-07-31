@@ -12,8 +12,11 @@ function newMockBytes4() {
   return web3.utils.randomHex(4);
 }
 
+const zeroAddress = web3.utils.toChecksumAddress(`0x${'0'.repeat(40)}`);
+
 export {
   newMockAddress,
   newMockBytes32,
-  newMockBytes4
+  newMockBytes4,
+  zeroAddress
 }
