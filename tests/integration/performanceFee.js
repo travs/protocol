@@ -133,15 +133,25 @@ test.serial("allows request and execution on the first investment", async t => {
 });
 
 test.serial("artificially inflate share price", async t => {
-  const preSharePrice = await fund.methods.calcSharePrice().call();
-  await ethToken.methods.transfer(fund.options.address, firstTest.wantedShares.mul(1.5)).send(
+  const preSharePrice = new BigNumber(await fund.methods.calcSharePrice().call());
+  await ethToken.methods.transfer(fund.options.address, firstTest.wantedShares.mul(1.78)).send(
     { from: deployer, gas: config.gas, gasPrice: config.gasPrice }
   );
-  const postSharePrice = await fund.methods.calcSharePrice().call();
-  const gav = await fund.methods.calcGav().call();
-  const [, managementFee] = Object.values(await fund.methods.calcUnclaimedFees(gav).call());
+  const postSharePrice = new BigNumber(await fund.methods.calcSharePrice().call());
+  const gav = new BigNumber(await fund.methods.calcGav().call());
+  const totalSupply = new BigNumber(await fund.methods.totalSupply().call());
+  const [, performanceFee, unclaimedFees] = Object.values(await fund.methods.calcUnclaimedFees(gav).call()).map(e => new BigNumber(e));;
+  const nav = new BigNumber((await fund.methods.performCalculations().call()).nav);
+
+  // Share price calculation using other formula (nav / totalSupply)
+  const sharePriceUsingNav= nav.mul(10 ** 18).div(totalSupply);
+  const sharePriceUsingGav= gav.sub(unclaimedFees).mul(10 ** 18).div(totalSupply);
+
+  console.log(unclaimedFees);
   t.true(Number(postSharePrice) > Number(preSharePrice));
-  t.true(managementFee > 0);
+  t.true(performanceFee > 0);
+  t.deepEqual(postSharePrice, sharePriceUsingNav);
+  t.deepEqual(postSharePrice, sharePriceUsingGav);
 });
 
 test.serial("new investment should not affect share price", async t => {

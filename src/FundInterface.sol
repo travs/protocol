@@ -37,7 +37,7 @@ interface FundInterface {
     function getManager() view returns (address);
 
     // Get accounting information
-    function performCalculations() view returns (uint, uint, uint, uint, uint, uint, uint);
-    function calcSharePrice() view returns (uint);
-    function calcSharePriceExcludingFees() view returns (uint);
+    function performCalculations() view returns (uint, uint, uint, uint, uint, uint, uint, uint);
+    function calcInvestmentSharePrice() view returns (uint);
+    function calcRedemptionSharePrice() view returns (uint);
 }

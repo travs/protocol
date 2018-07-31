@@ -37,7 +37,7 @@ contract FundRanking {
             address fundAddress = version.getFundById(i);
             Fund fund = Fund(fundAddress);
             fundAddrs[i] = fundAddress;
-            sharePrices[i] = fund.calcSharePrice();
+            sharePrices[i] = fund.calcRedemptionSharePrice();
             creationTimes[i] = fund.getCreationTime();
             names[i] = fund.getName();
         }
