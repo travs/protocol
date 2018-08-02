@@ -66,6 +66,7 @@ test.before(async () => {
     deployed.EthToken.options.address, // base asset
     config.protocol.fund.managementFee,
     config.protocol.fund.performanceFee,
+    config.protocol.fund.performanceFrequency,
     deployed.NoCompliance.options.address,
     deployed.RMMakeOrders.options.address,
     [simpleMarketWithApprove.options.address],

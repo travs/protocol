@@ -65,6 +65,7 @@ test.before(async () => {
     ethToken.options.address, // base asset
     config.protocol.fund.managementFee,
     config.protocol.fund.performanceFee,
+    config.protocol.fund.performanceFrequency,
     deployed.NoCompliance.options.address,
     deployed.RMMakeOrders.options.address,
     [deployed.MatchingMarket.options.address],

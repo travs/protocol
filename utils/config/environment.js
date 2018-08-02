@@ -99,7 +99,8 @@ module.exports = {
       },
       fund: {
         managementFee: 0,
-        performanceFee: 0
+        performanceFee: 0,
+        performanceFrequency: 0
       },
       staking: {
         minimumAmount: 1000000,

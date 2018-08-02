@@ -27,6 +27,7 @@ test.before(async () => {
     deployed.MlnToken.options.address,
     0,
     0,
+    0,
     compliance.options.address,
     deployed.RMMakeOrders.options.address,
     [deployed.MatchingMarket.options.address],

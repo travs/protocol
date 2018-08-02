@@ -3,7 +3,7 @@ import test from "ava";
 import web3 from "../../utils/lib/web3";
 import { retrieveContract } from "../../utils/lib/contracts";
 import deployEnvironment from "../../utils/deploy/contracts";
-import calcSharePriceAndAllocateFees from "../../utils/lib/calcSharePriceAndAllocateFees";
+import calcRedemptionSharePrice from "../../utils/lib/calcRedemptionSharePrice";
 import getAllBalances from "../../utils/lib/getAllBalances";
 import { getTermsSignatureParameters } from "../../utils/lib/signing";
 import { updateCanonicalPriceFeed } from "../../utils/lib/updatePriceFeed";
@@ -60,6 +60,7 @@ test.serial("can set up new fund", async t => {
     ethToken.options.address, // base asset
     config.protocol.fund.managementFee,
     config.protocol.fund.performanceFee,
+    config.protocol.fund.performanceFrequency,
     deployed.NoCompliance.options.address,
     deployed.RMMakeOrders.options.address,
     [deployed.MatchingMarket.options.address],
@@ -158,7 +159,7 @@ test.serial.skip('direct transfer of a token to the Fund is rejected', async t =
 
 // TODO: this one may be more suitable to a unit test
 // TODO: remove skip when we re-introduce fund name tracking
-test.serial(
+test.skip(
   "a new fund with a name used before cannot be created",
   async t => {
     const [r, s, v] = await getTermsSignatureParameters(deployer);
@@ -169,6 +170,7 @@ test.serial(
         mlnToken.options.address, // base asset
         config.protocol.fund.managementFee,
         config.protocol.fund.performanceFee,
+        config.protocol.fund.performanceFrequency,
         deployed.NoCompliance.options.address,
         deployed.RMMakeOrders.options.address,
         [deployed.MatchingMarket.options.address],
@@ -201,7 +203,7 @@ async function calculateOfferValue(wantedShares) {
     invertedPrice,
     assetDecimals
   } = await pricefeed.methods.getInvertedPriceInfo(mlnToken.options.address).call();
-  const sharePrice = new BigNumber(await fund.methods.calcSharePriceAndAllocateFees().call());
+  const sharePrice = new BigNumber(await fund.methods.calcRedemptionSharePrice().call());
   const sharesWorth = new BigNumber(await fund.methods.toWholeShareUnit(sharePrice.mul(wantedShares)).call());
   return new BigNumber(Math.floor(sharesWorth.mul(invertedPrice).div(10 ** assetDecimals)));
 }
@@ -434,7 +436,7 @@ subsequentTests.forEach(testInstance => {
   });
 
   test.serial("management fee calculated correctly", async t => {
-    const timestamp = await calcSharePriceAndAllocateFees(
+    const timestamp = await calcRedemptionSharePrice(
       fund,
       manager,
       config,

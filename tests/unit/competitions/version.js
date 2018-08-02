@@ -34,6 +34,7 @@ test("Cannot setup a new fund without whitelist in Competition", async t => {
     t.context.deployed.MlnToken.options.address, // base asset
     config.protocol.fund.managementFee,
     config.protocol.fund.performanceFee,
+    config.protocol.fund.performanceFrequency,
     t.context.deployed.NoCompliance.options.address,
     t.context.deployed.RMMakeOrders.options.address,
     [t.context.deployed.MatchingMarket.options.address],
@@ -51,6 +52,7 @@ test("Can setup a new fund from whitelisted account", async t => {
     t.context.deployed.MlnToken.options.address, // base asset
     config.protocol.fund.managementFee,
     config.protocol.fund.performanceFee,
+    config.protocol.fund.performanceFrequency,
     t.context.deployed.NoCompliance.options.address,
     t.context.deployed.RMMakeOrders.options.address,
     [t.context.deployed.MatchingMarket.options.address],

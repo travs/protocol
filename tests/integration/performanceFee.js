@@ -147,7 +147,6 @@ test.serial("artificially inflate share price", async t => {
   const sharePriceUsingNav= nav.mul(10 ** 18).div(totalSupply);
   const sharePriceUsingGav= gav.sub(unclaimedFees).mul(10 ** 18).div(totalSupply);
 
-  console.log(unclaimedFees);
   t.true(Number(postSharePrice) > Number(preSharePrice));
   t.true(performanceFee > 0);
   t.deepEqual(postSharePrice, sharePriceUsingNav);

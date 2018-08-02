@@ -98,6 +98,7 @@ test.before(async () => {
     deployed.EthToken.options.address, // reference asset
     config.protocol.fund.managementFee,
     config.protocol.fund.performanceFee,
+    config.protocol.fund.performanceFrequency,
     deployed.NoCompliance.options.address,
     deployed.RMMakeOrders.options.address,
     [deployed.SimpleMarket.options.address, deployed.MatchingMarket.options.address],
@@ -235,7 +236,7 @@ exchangeIndexes.forEach(i => {
       investorGasTotal = investorGasTotal.plus(receipt.gasUsed);
       const post = await getAllBalances(deployed, accounts, fund);
       const [gav, , , unclaimedFees, ,] = Object.values(
-        await fund.methods.atLastUnclaimedFeeAllocation().call(),
+        await fund.methods.atLastManagementFeeAllocation().call(),
       ).map(e => new BigNumber(e));
       const feesShareQuantity = parseInt(
         unclaimedFees
@@ -802,11 +803,11 @@ test.serial("converts fees and manager receives them", async t => {
   const pre = await getAllBalances(deployed, accounts, fund);
   const preManagerShares = new BigNumber(await fund.methods.balanceOf(manager).call());
   const totalSupply = new BigNumber(await fund.methods.totalSupply().call());
-  receipt = await fund.methods.calcSharePriceAndAllocateFees().send(
+  receipt = await fund.methods.calcRedemptionSharePrice().send(
     { from: manager, gas: config.gas, gasPrice: config.gasPrice }
   );
   const [gav, , , unclaimedFees, ,] = Object.values(
-    await fund.methods.atLastUnclaimedFeeAllocation().call(),
+    await fund.methods.atLastManagementFeeAllocation().call(),
   );
   const shareQuantity = Math.floor(
     Number(totalSupply.mul(unclaimedFees).div(gav)),

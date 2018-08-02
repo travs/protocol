@@ -34,6 +34,7 @@ test.beforeEach(async () => {
     deployed.MlnToken.options.address, // reference asset
     config.protocol.fund.managementFee,
     config.protocol.fund.performanceFee,
+    config.protocol.fund.performanceFrequency,
     deployed.NoCompliance.options.address,
     deployed.RMMakeOrders.options.address,
     [deployed.MatchingMarket.options.address],
@@ -50,6 +51,7 @@ test.beforeEach(async () => {
     deployed.MlnToken.options.address, // reference asset
     config.protocol.fund.managementFee,
     config.protocol.fund.performanceFee,
+    config.protocol.fund.performanceFrequency,
     deployed.NoCompliance.options.address,
     deployed.RMMakeOrders.options.address,
     [deployed.MatchingMarket.options.address],

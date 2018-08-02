@@ -92,6 +92,7 @@ test.beforeEach(async t => {
     t.context.deployed.EthToken.options.address, // base asset
     config.protocol.fund.managementFee,
     config.protocol.fund.performanceFee,
+    config.protocol.fund.performanceFrequency,
     t.context.deployed.NoCompliance.options.address,
     t.context.deployed.RMMakeOrders.options.address,
     [t.context.deployed.MatchingMarket.options.address],
@@ -151,6 +152,7 @@ test("Can redeem before endTime if version is shutdown", async t => {
   const fundPreSupply = await t.context.fund.methods.totalSupply().call();
   const managerPreShares = await t.context.fund.methods.balanceOf(manager).call();
   const competitionPreShares = await t.context.fund.methods.balanceOf(t.context.competition.options.address).call();
+  console.log('works');
   await t.context.competition.methods.claimReward().send(
     {
       from: manager,
@@ -158,6 +160,7 @@ test("Can redeem before endTime if version is shutdown", async t => {
       gasPrice: config.gasPrice,
     }
   );
+  console.log('not works');
   const fundPostSupply = await t.context.fund.methods.totalSupply().call();
   const managerPostShares = await t.context.fund.methods.balanceOf(manager).call();
   const competitionPostShares = await t.context.fund.methods.balanceOf(t.context.competition.options.address).call();
