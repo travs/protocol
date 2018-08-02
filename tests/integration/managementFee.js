@@ -137,7 +137,7 @@ test.serial("new investment accrues management fee correctly", async t => {
   firstTest.offeredValue = firstTest.wantedShares.mul(investmentSharePrice).div(10 ** 18);
   await requestAndExecute(investor, firstTest.offeredValue, firstTest.wantedShares);
   const post = await getAllBalances(deployed, accounts, fund);
-  const {gav: gavAtConversion, totalSupply: totalSupplyAtConversion, managementFee: mgmtFeeAtConversion, timestamp: timestampAtConversion} = await fund.methods.atLastManagementFeeAllocation().call();
+  const {gav: gavAtConversion, investmentSharePrice: actualInvestmentSharePrice, totalSupply: totalSupplyAtConversion, managementFee: mgmtFeeAtConversion, timestamp: timestampAtConversion} = await fund.methods.atLastManagementFeeAllocation().call();
   const timedelta = Number(timestampAtConversion) - Number(timestampAtLastConversion);
   const accumulatedMgmtFee = new BigNumber(gavAtConversion).mul(timedelta).div(31536000).mul(managementFeeRate).div(10 ** 18).round();
   const feeShares = accumulatedMgmtFee.mul(totalSupplyAtConversion).div(gavAtConversion);
@@ -145,7 +145,8 @@ test.serial("new investment accrues management fee correctly", async t => {
   totalAccumulatedShares += Number(feeSharesInflate);
   totalAccumulatedMgmtFee += Number(accumulatedMgmtFee);
   t.deepEqual(Number(mgmtFeeAtConversion), Number(accumulatedMgmtFee));
-  t.deepEqual(pre.investor.EthToken.sub(post.investor.EthToken), firstTest.offeredValue.sub(mgmtFeeAtConversion));
+  t.deepEqual(pre.investor.EthToken.sub(post.investor.EthToken), firstTest.wantedShares.mul(actualInvestmentSharePrice).div(10 ** 18));
+  t.true(Number(actualInvestmentSharePrice) < Number(investmentSharePrice));
 });
 
 test.serial("redemption accrues management fee correctly", async t => {
