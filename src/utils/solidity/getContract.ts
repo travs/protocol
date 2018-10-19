@@ -6,6 +6,7 @@ import { getGlobalEnvironment } from '~/utils/environment/getGlobalEnvironment';
 
 export enum Contract {
   Accounting = 'fund/accounting/Accounting',
+  Engine = 'engine/Engine',
   FeeManager = 'fund/fees/FeeManager',
   FundFactory = 'factory/FundFactory',
   Hub = 'fund/hub/Hub',
